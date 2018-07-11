@@ -1,0 +1,10 @@
+{
+    "name": "lautreamont/refactoring-task",
+    "authors": [
+        {
+            "name": "Dmitry Kartamyshev",
+            "email": "dima_kartamyshev@ukr.net"
+        }
+    ],
+    "require": {}
+}
