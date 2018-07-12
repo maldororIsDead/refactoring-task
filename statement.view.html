@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Movie Rental Profile</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css"
+          integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+</head>
+<body>
+<div class="container">
+    <div class="row mt-4 justify-content-centered">
+        <table class="table table-bordered">
+            <caption><?= $data['name'] ?></caption>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>frequentRenterPoints</th>
+            </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($data['rentals'] as $rentailInfo) : ?>
+            <tr>
+                <?php foreach ($rentailInfo as $infoName => $infoValue) : ?>
+                <td><?= $infoName ?></td>
+                <td colspan="2"><?= $infoValue ?></td>
+                <?php endforeach ?>
+            </tr>
+            <?php endforeach ?>
+            </tbody>
+            <tfoot>
+            <tr>
+                <td>Total</td>
+                <td><?= $data['totalAmount'] ?></td>
+                <td><?= $data['frequentRenterPoints'] ?></td>
+            </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -8,141 +8,114 @@ require __DIR__ . '/vendor/autoload.php';
 Разбить метод statement на отдельные методыпше
 */
 
-abstract class CustomerFactory
+class Customer
 {
-
-    public abstract function getMultimediaType(): MultimediaContentFactory;
-
-    public abstract function getStatements(): FormatterFactory;
-
-}
-
-class Customer extends CustomerFactory
-{
-
     /* @var string */
     protected $name;
 
     /* @var array */
     protected $rentals;
 
-    /* @var Object */
-    protected $rental;
-
     /* @var int */
     protected $totalAmount = 0;
 
-    /* @var array */
-    protected $statement = [];
+    /* @var int */
+    protected $frequentRenterPoints = 0;
 
-    public function __construct($name)
+    public function __construct(string $name)
     {
         $this->name = $name;
     }
 
-    public function addItem(RentalTypeFactory $rental): void
+    public function addItem(Amountable $rental): void
     {
         $this->rentals[] = $rental;
     }
 
-    protected function getStatementData(): array
+    protected function calcCustomerData(): void
     {
-        return $this->statement;
-    }
-
-    public function calcTotalAmount(): void
-    {
-        $frequentRenterPoints = 0;
-        $this->statement['header'] = "Rental Record for " . $this->name . "\n";
-
         foreach ($this->rentals as $rental) {
             $thisAmount = $rental->getAmount();
+            $this->frequentRenterPoints++;
 
-            $frequentRenterPoints++;
-            if (get_class($rental) === 'NewReleaseRental' && $rental->getDaysRented() > 1) {
-                $frequentRenterPoints++;
+            if ($rental instanceof NewReleaseMovie && $rental->getDaysRented() > 1) {
+                $this->frequentRenterPoints++;
             }
 
-            $this->statement['body'][$rental->getMovie()] = $thisAmount;
             $this->totalAmount += $thisAmount;
         }
-
-        $this->statement['footer'][] = "Amount owed is " . $this->totalAmount . "\n";
-        $this->statement['footer'][] = "You earned " . $frequentRenterPoints . " frequent renter points";
     }
 
-    public function getMultimediaType(): MultimediaContentFactory
+    public function getCustomerData(): array
     {
-        return new Movie($this->title);
-    }
+        $this->calcCustomerData();
 
-    public function getStatements(): FormatterFactory
-    {
-        return new StringFormatter($this->statement);
+        $rentals = array_map(function ($rental) {
+            return [$rental->getTitle() => $rental->getAmount()];
+        }, $this->rentals);
+
+        $data = [
+            'name' => $this->name,
+            'rentals' => $rentals,
+            'totalAmount' => $this->totalAmount,
+            'frequentRenterPoints' => $this->frequentRenterPoints
+        ];
+
+        return $data;
     }
 }
 
-abstract class MultimediaContentFactory
+class Statement
 {
-
-    public abstract function getTitle(): string;
-
+    public static function getStatement(string $type, array $data)
+    {
+        $formatData = FormatFactory::create($type);
+        return $formatData->getFormattedContent($data);
+    }
 }
 
-class Movie extends MultimediaContentFactory
+interface MultimediaContentable
+{
+    public function getTitle(): string;
+
+    public function getDaysRented(): int;
+}
+
+class Movie implements MultimediaContentable
 {
     /* @var string */
-    private $title;
+    protected $title;
 
-    public function __construct($title)
+    /* @var int */
+    protected $daysRented;
+
+    /* @var int */
+    protected $movieAmount = 0;
+
+    public function __construct(string $title, int $daysRented)
     {
         $this->title = $title;
+        $this->daysRented = $daysRented;
     }
 
     public function getTitle(): string
     {
         return $this->title;
     }
-}
-
-abstract class RentalTypeFactory
-{
-
-    abstract public function getAmount(): int;
-
-    abstract public function getMovie(): string;
-
-    abstract public function getDaysRented(): int;
-
-}
-
-class ChildrenRental extends RentalTypeFactory
-{
-    /* @var string */
-    private $movie;
-
-    /* @var int */
-    private $daysRented;
-
-    /* @var int */
-    private $movieAmount = 0;
-
-    public function __construct($movie, $daysRented)
-    {
-        $this->movie = $movie;
-        $this->daysRented = $daysRented;
-    }
-
-    public function getMovie(): string
-    {
-        return $this->movie;
-    }
 
     public function getDaysRented(): int
     {
         return $this->daysRented;
     }
+}
 
+interface Amountable
+{
+    public function getAmount(): int;
+}
+
+class ChildrenMovie extends Movie implements Amountable
+{
     public function getAmount(): int
     {
         $this->movieAmount += 1.5;
@@ -153,34 +126,8 @@ class ChildrenRental extends RentalTypeFactory
     }
 }
 
-class RegularRental extends RentalTypeFactory
+class RegularMovie extends Movie implements Amountable
 {
-
-    /* @var string */
-    private $movie;
-
-    /* @var int */
-    private $daysRented;
-
-    /* @var int */
-    private $movieAmount = 0;
-
-    public function __construct($movie, $daysRented)
-    {
-        $this->movie = $movie;
-        $this->daysRented = $daysRented;
-    }
-
-    public function getMovie(): string
-    {
-        return $this->movie;
-    }
-
-    public function getDaysRented(): int
-    {
-        return $this->daysRented;
-    }
-
     public function getAmount(): int
     {
         $this->movieAmount += 2;
@@ -191,34 +138,8 @@ class RegularRental extends RentalTypeFactory
     }
 }
 
-class NewReleaseRental extends RentalTypeFactory
+class NewReleaseMovie extends Movie implements Amountable
 {
-
-    /* @var string */
-    private $movie;
-
-    /* @var int */
-    private $daysRented;
-
-    /* @var int */
-    private $movieAmount = 0;
-
-    public function __construct($movie, $daysRented)
-    {
-        $this->movie = $movie;
-        $this->daysRented = $daysRented;
-    }
-
-    public function getMovie(): string
-    {
-        return $this->movie;
-    }
-
-    public function getDaysRented(): int
-    {
-        return $this->daysRented;
-    }
-
     public function getAmount(): int
     {
         $this->movieAmount += $this->daysRented * 3;
@@ -226,73 +147,75 @@ class NewReleaseRental extends RentalTypeFactory
     }
 }
 
-abstract class FormatterFactory
+class FormatFactory
 {
-    abstract public function format();
+    public static function create(string $type)
+    {
+        $product = ucfirst($type) . 'Formatter';
+
+        if (class_exists($product)) {
+            return new $product;
+        } else {
+            throw new Exception("This class isn`t exist");
+        }
+    }
 }
 
-class Htmlable extends FormatterFactory
+interface Formatable
 {
-    /* @var array */
-    protected $statement;
+    public function format(array $data): void;
 
-    public function __construct($statement)
+    public function getFormattedContent(array $data): string;
+}
+
+class HTMLFormatter implements Formatable
+{
+    protected $content;
+
+    public function format(array $data): void
     {
-        $this->statement = $statement;
+        ob_start();
+        include('statement.view.html');
+        $this->content = ob_get_contents();
+        ob_end_clean();
     }
 
-    public function format(): string
+    public function getFormattedContent(array $data): string
     {
-        $result = '<h1>' . $this->statement['header'] . '</h1>' . "\n";
-
-        foreach ($this->statement['body'] as $title => $body) {
-            $result .= '<p>' . $title . "\t" . $body . '</p>' . "\n";
-        }
-
-        $result .= '<p>' . $this->statement['footer'] . '</p>' . "\n";
-        $result .= '<p>' . $this->statement['footer'] . '</p>';
-
-        return $result;
+        $this->format($data);
+        return $this->content;
     }
 
 }
 
-class StringFormatter extends FormatterFactory
+class StringFormatter implements Formatable
 {
-    /* @var array */
-    protected $statement;
+    protected $content;
 
-    public function __construct($statement)
+    public function format(array $data): void
     {
-        $this->statement = $statement;
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $this->format($value);
+            } else {
+                $this->content .= PHP_EOL . " \t" . $key . ": " . $value . PHP_EOL;
+            }
+        }
     }
 
-    public function format()
+    public function getFormattedContent(array $data): string
     {
-        $result = '';
-
-        foreach ($this->statement['header'] as $header) {
-            $result .= $header . "\n";
-        }
-
-        foreach ($this->statement['body'] as $title => $amount) {
-            $result .= $title . "\t" . $amount . "\n";
-        }
-
-        foreach ($this->statement['footer'] as $footer) {
-            $result .= $footer . "\n";
-        }
-
-        return $result;
+        $this->format($data);
+        return $this->content;
     }
 }
 
 $customer = new Customer('Дима');
-$customer->addItem(new ChildrenRental('Gladiator', 1));
-$customer->getMultimediaType();
 
-$customer->addItem(new NewReleaseRental('Spiderman', 2));
-$customer->calcTotalAmount();
+$customer->addItem(new ChildrenMovie('Gladiator', 1));
+$customer->addItem(new NewReleaseMovie('Spiderman', 2));
 
-var_dump($customer->getStatements()->format());
+$statement = Statement::getStatement('string', $customer->getCustomerData());
+
+echo $statement;
 
