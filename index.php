@@ -32,7 +32,7 @@ class Customer
         $this->rentals[] = $rental;
     }
 
-    protected function calcCustomerData(): void
+    protected function calcData(): void
     {
         foreach ($this->rentals as $rental) {
             $thisAmount = $rental->getAmount();
@@ -46,9 +46,9 @@ class Customer
         }
     }
 
-    public function getCustomerData(): array
+    public function getData(): array
     {
-        $this->calcCustomerData();
+        $this->calcData();
 
         $rentals = array_map(function ($rental) {
             return [$rental->getTitle() => $rental->getAmount()];
@@ -67,10 +67,11 @@ class Customer
 
 class Statement
 {
-    public static function getStatement(string $type, array $data)
+    public static function get(string $type, array $data)
     {
-        $formatData = FormatFactory::create($type);
-        return $formatData->getFormattedContent($data);
+        $formatter = FormatterFactory::createFormatter($type);
+
+        return $formatter->getFormattedContent($data);
     }
 }
 
@@ -119,9 +120,11 @@ class ChildrenMovie extends Movie implements Amountable
     public function getAmount(): int
     {
         $this->movieAmount += 1.5;
+
         if ($this->daysRented > 3) {
             $this->movieAmount += ($this->daysRented - 3) * 1.5;
         }
+
         return $this->movieAmount;
     }
 }
@@ -131,9 +134,11 @@ class RegularMovie extends Movie implements Amountable
     public function getAmount(): int
     {
         $this->movieAmount += 2;
+
         if ($this->daysRented > 2) {
             $this->movieAmount += ($this->daysRented - 2) * 1.5;
         }
+
         return $this->movieAmount;
     }
 }
@@ -143,21 +148,22 @@ class NewReleaseMovie extends Movie implements Amountable
     public function getAmount(): int
     {
         $this->movieAmount += $this->daysRented * 3;
+
         return $this->movieAmount;
     }
 }
 
-class FormatFactory
+class FormatterFactory
 {
-    public static function create(string $type)
+    public static function createFormatter(string $type)
     {
         $product = ucfirst($type) . 'Formatter';
 
         if (class_exists($product)) {
             return new $product;
-        } else {
-            throw new Exception("This class isn`t exist");
         }
+
+        throw new Exception("This class isn`t exist");
     }
 }
 
@@ -183,6 +189,7 @@ class HTMLFormatter implements Formatable
     public function getFormattedContent(array $data): string
     {
         $this->format($data);
+
         return $this->content;
     }
 
@@ -206,6 +213,7 @@ class StringFormatter implements Formatable
     public function getFormattedContent(array $data): string
     {
         $this->format($data);
+        
         return $this->content;
     }
 }
@@ -215,7 +223,7 @@ $customer = new Customer('Дима');
 $customer->addItem(new ChildrenMovie('Gladiator', 1));
 $customer->addItem(new NewReleaseMovie('Spiderman', 2));
 
-$statement = Statement::getStatement('string', $customer->getCustomerData());
+$statement = Statement::get('string', $customer->getData());
 
 echo $statement;
 
